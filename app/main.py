@@ -14,6 +14,7 @@ import torch
 from diffusers import DiffusionPipeline
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from PIL import Image
@@ -35,6 +36,7 @@ IDLE_UNLOAD_SECONDS = int(os.getenv("IDLE_UNLOAD_SECONDS", "900"))
 ENABLE_LAZY_LOADING = os.getenv("ENABLE_LAZY_LOADING", "1") == "1"
 ALLOW_ORIGINS = os.getenv("ALLOW_ORIGINS", "*")
 GENERATED_DIR = Path(os.getenv("GENERATED_DIR", "generated"))
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
 GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -76,7 +78,9 @@ class ServerState:
                     continue
                 idle_for = time.time() - self.last_used_ts
                 if idle_for >= IDLE_UNLOAD_SECONDS:
-                    logger.info("Idle timeout reached (%.1fs), unloading pipeline", idle_for)
+                    logger.info(
+                        "Idle timeout reached (%.1fs), unloading pipeline", idle_for
+                    )
                     self.unload_pipeline()
             except Exception as exc:  # pragma: no cover
                 logger.exception("Idle watcher error: %s", exc)
@@ -98,7 +102,9 @@ class ServerState:
                 return self.pipe
 
             device, dtype = self.get_device_and_dtype()
-            logger.info("Loading pipeline %s on %s with dtype=%s", MODEL_ID, device, dtype)
+            logger.info(
+                "Loading pipeline %s on %s with dtype=%s", MODEL_ID, device, dtype
+            )
             pipe = DiffusionPipeline.from_pretrained(
                 MODEL_ID,
                 torch_dtype=dtype,
@@ -259,6 +265,14 @@ async def health():
     }
 
 
+@app.get("/", include_in_schema=False)
+async def root():
+    frontend_path = FRONTEND_DIR / "index.html"
+    if frontend_path.exists():
+        return FileResponse(frontend_path, media_type="text/html")
+    return {"message": "Qwen Image API", "docs": "/docs", "health": "/health"}
+
+
 @app.get("/v1/models")
 async def list_models(authorization: Optional[str] = Header(default=None)):
     verify_api_key(authorization)
@@ -286,7 +300,9 @@ async def generate_image(
 
     requested_model = body.model or MODEL_ID
     if requested_model != MODEL_ID:
-        raise HTTPException(status_code=400, detail=f"This server exposes only one model: {MODEL_ID}")
+        raise HTTPException(
+            status_code=400, detail=f"This server exposes only one model: {MODEL_ID}"
+        )
 
     if body.n > MAX_N:
         raise HTTPException(status_code=400, detail=f"n must be <= {MAX_N}")
@@ -308,7 +324,9 @@ async def generate_image(
             generator = None
             if seed is not None:
                 gen_device = "cuda" if torch.cuda.is_available() else "cpu"
-                generator = torch.Generator(device=gen_device).manual_seed(int(seed) + i)
+                generator = torch.Generator(device=gen_device).manual_seed(
+                    int(seed) + i
+                )
 
             result = await asyncio.to_thread(
                 pipe,
@@ -326,17 +344,21 @@ async def generate_image(
             STATE.last_used_ts = time.time()
 
             if body.response_format == "b64_json":
-                data.append({
-                    "b64_json": pil_to_base64(image, body.output_format),
-                    "revised_prompt": body.prompt,
-                })
+                data.append(
+                    {
+                        "b64_json": pil_to_base64(image, body.output_format),
+                        "revised_prompt": body.prompt,
+                    }
+                )
             else:
                 filename = save_image(image, body.output_format)
                 base = str(request.base_url).rstrip("/")
-                data.append({
-                    "url": f"{base}/generated/{filename}",
-                    "revised_prompt": body.prompt,
-                })
+                data.append(
+                    {
+                        "url": f"{base}/generated/{filename}",
+                        "revised_prompt": body.prompt,
+                    }
+                )
 
         return {"created": created, "data": data}
 
@@ -344,10 +366,16 @@ async def generate_image(
 @app.post("/v1/images/edits")
 async def edits_not_supported(authorization: Optional[str] = Header(default=None)):
     verify_api_key(authorization)
-    raise HTTPException(status_code=501, detail="Only /v1/images/generations is supported for this text-to-image checkpoint.")
+    raise HTTPException(
+        status_code=501,
+        detail="Only /v1/images/generations is supported for this text-to-image checkpoint.",
+    )
 
 
 @app.post("/v1/images/variations")
 async def variations_not_supported(authorization: Optional[str] = Header(default=None)):
     verify_api_key(authorization)
-    raise HTTPException(status_code=501, detail="Only /v1/images/generations is supported for this text-to-image checkpoint.")
+    raise HTTPException(
+        status_code=501,
+        detail="Only /v1/images/generations is supported for this text-to-image checkpoint.",
+    )

@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen Image Server - OpenAI-Compatible AI Image Generation</title>
+    <meta name="description" content="OpenAI-compatible local image generation server powered by Qwen-Image. Generate stunning AI images with a simple API.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #ec4899;
+            --accent: #06b6d4;
+            --dark: #0f172a;
+            --darker: #020617;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --gray-light: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --gradient-1: linear-gradient(135deg, #6366f1 0%, #ec4899 50%, #06b6d4 100%);
+            --gradient-2: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            --gradient-3: linear-gradient(180deg, rgba(99, 102, 241, 0.1) 0%, transparent 100%);
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--darker);
+            color: var(--light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-gradient-orb {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.4;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb-1 {
+            top: -200px;
+            right: -200px;
+            background: var(--primary);
+        }
+
+        .orb-2 {
+            bottom: -200px;
+            left: -200px;
+            background: var(--secondary);
+        }
+
+        .orb-3 {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--accent);
+            opacity: 0.2;
+        }
+
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 1rem 2rem;
+            background: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--light);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.25rem;
+        }
+
+        .logo-text {
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .logo-text span {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--gray-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--light);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+            box-shadow: var(--shadow-md), 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg), 0 0 30px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-secondary {
+            background: var(--glass);
+            color: var(--light);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary-light);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--light);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-ghost:hover {
+            background: var(--glass);
+        }
+
+        main {
+            position: relative;
+            z-index: 1;
+        }
+
+        section {
+            padding: 6rem 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding-top: 100px;
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 100px;
+            font-size: 0.875rem;
+            color: var(--gray-light);
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-badge-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero h1 .gradient {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--gray-light);
+            margin-bottom: 2rem;
+            max-width: 500px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 3rem;
+        }
+
+        .stat {
+            text-align: left;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--gray);
+        }
+
+        .hero-visual {
+            position: relative;
+        }
+
+        .hero-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: var(--shadow-xl), var(--shadow-glow);
+        }
+
+        .hero-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero-card-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .hero-card-dot.red { background: #ef4444; }
+        .hero-card-dot.yellow { background: #f59e0b; }
+        .hero-card-dot.green { background: #10b981; }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+        }
+
+        .code-block .comment { color: var(--gray); }
+        .code-block .keyword { color: var(--primary-light); }
+        .code-block .string { color: var(--success); }
+        .code-block .function { color: var(--secondary); }
+        .code-block .property { color: var(--accent); }
+
+        .floating-badge {
+            position: absolute;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            box-shadow: var(--shadow-lg);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .floating-badge.badge-1 {
+            top: -20px;
+            right: -20px;
+            animation-delay: 0s;
+        }
+
+        .floating-badge.badge-2 {
+            bottom: 40px;
+            left: -40px;
+            animation-delay: 1s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .floating-badge svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .section-header h2 .gradient {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-header p {
+            color: var(--gray-light);
+            font-size: 1.125rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--gradient-1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--gray-light);
+            font-size: 0.95rem;
+        }
+
+        .playground {
+            background: var(--gradient-2);
+            border-radius: 24px;
+            padding: 3rem;
+            border: 1px solid var(--glass-border);
+        }
+
+        .playground-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .playground-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--glass);
+            border-radius: 100px;
+            font-size: 0.875rem;
+        }
+
+        .status-indicator.online {
+            color: var(--success);
+        }
+
+        .status-indicator.online::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .playground-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .playground-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: var(--gray-light);
+        }
+
+        .form-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 0.875rem 1rem;
+            color: var(--light);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .form-input::placeholder {
+            color: var(--gray);
+        }
+
+        textarea.form-input {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-select {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 0.875rem 1rem;
+            color: var(--light);
+            font-size: 0.95rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-select option {
+            background: var(--dark);
+        }
+
+        .playground-result {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            min-height: 400px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .result-header span {
+            font-weight: 500;
+            color: var(--gray-light);
+        }
+
+        .result-image-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed var(--glass-border);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .result-placeholder {
+            text-align: center;
+            color: var(--gray);
+        }
+
+        .result-placeholder svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .result-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--glass-border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .api-section {
+            background: var(--gradient-2);
+            border-radius: 24px;
+            overflow: hidden;
+        }
+
+        .api-tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .api-tab {
+            padding: 1rem 2rem;
+            background: transparent;
+            border: none;
+            color: var(--gray-light);
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .api-tab:hover {
+            color: var(--light);
+        }
+
+        .api-tab.active {
+            color: var(--light);
+        }
+
+        .api-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gradient-1);
+        }
+
+        .api-content {
+            padding: 2rem;
+        }
+
+        .api-panel {
+            display: none;
+        }
+
+        .api-panel.active {
+            display: block;
+        }
+
+        .endpoint-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .method-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .method-get { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .method-post { background: rgba(99, 102, 241, 0.2); color: var(--primary-light); }
+
+        .endpoint-path {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.95rem;
+            color: var(--light);
+        }
+
+        .endpoint-description {
+            color: var(--gray-light);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        .credits-section {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--gradient-2);
+            border-radius: 24px;
+        }
+
+        .credits-section h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .credits-section p {
+            color: var(--gray-light);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .credits-logos {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .credit-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .credit-logo-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .credit-logo span {
+            font-size: 0.875rem;
+            color: var(--gray-light);
+        }
+
+        footer {
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid var(--glass-border);
+            padding: 3rem 2rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--gray-light);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--light);
+        }
+
+        .footer-copy {
+            color: var(--gray);
+            font-size: 0.875rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            background: var(--dark);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-xl);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--error); }
+
+        @media (max-width: 1024px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .hero p {
+                margin: 0 auto 2rem;
+            }
+
+            .hero-buttons {
+                justify-content: center;
+            }
+
+            .hero-stats {
+                justify-content: center;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .playground-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 1rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            section {
+                padding: 4rem 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-stats {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 1.5rem;
+                text-align: center;
+            }
+
+            .footer-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-gradient-orb orb-1"></div>
+    <div class="bg-gradient-orb orb-2"></div>
+    <div class="bg-gradient-orb orb-3"></div>
+
+    <nav>
+        <div class="nav-content">
+            <a href="#" class="logo">
+                <div class="logo-icon">Q</div>
+                <div class="logo-text">Qwen<span>Image</span></div>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#playground">Playground</a>
+                <a href="#api">API</a>
+                <a href="https://github.com/groxaxo/qwen-image-openai-server" target="_blank">GitHub</a>
+                <a href="#" class="btn btn-primary" onclick="scrollToPlayground()">Try Now</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <div class="hero-text">
+                        <div class="hero-badge">
+                            <span class="hero-badge-dot"></span>
+                            OpenAI-Compatible API
+                        </div>
+                        <h1>Generate <span class="gradient">Stunning Images</span> with AI</h1>
+                        <p>Self-hosted image generation server powered by Qwen-Image. Drop-in compatible with OpenAI's API. Fast, private, and beautiful.</p>
+                        <div class="hero-buttons">
+                            <a href="https://github.com/groxaxo/qwen-image-openai-server" class="btn btn-primary" target="_blank">
+                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                View on GitHub
+                            </a>
+                            <a href="#playground" class="btn btn-secondary">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                Try Playground
+                            </a>
+                        </div>
+                        <div class="hero-stats">
+                            <div class="stat">
+                                <div class="stat-value">100%</div>
+                                <div class="stat-label">OpenAI Compatible</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">&lt;2s</div>
+                                <div class="stat-label">First Token</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value">Private</div>
+                                <div class="stat-label">Self-Hosted</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-visual">
+                        <div class="hero-card">
+                            <div class="hero-card-header">
+                                <div class="hero-card-dot red"></div>
+                                <div class="hero-card-dot yellow"></div>
+                                <div class="hero-card-dot green"></div>
+                            </div>
+                            <div class="code-block">
+<span class="comment"># Quick Start</span>
+<span class="keyword">from</span> openai <span class="keyword">import</span> OpenAI
+
+client = <span class="function">OpenAI</span>(
+    <span class="property">base_url</span>=<span class="string">"http://localhost:8000/v1"</span>,
+    <span class="property">api_key</span>=<span class="string">"local-qwen"</span>
+)
+
+response = client.<span class="function">images.generate</span>(
+    <span class="property">model</span>=<span class="string">"qwen-image"</span>,
+    <span class="property">prompt</span>=<span class="string">"A cyberpunk cityscape"</span>,
+    <span class="property">size</span>=<span class="string">"1024x1024"</span>,
+    <span class="property">n</span>=1
+)
+                            </div>
+                        </div>
+                        <div class="floating-badge badge-1">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            GPU Accelerated
+                        </div>
+                        <div class="floating-badge badge-2">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            Private & Secure
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Powerful <span class="gradient">Features</span></h2>
+                    <p>Everything you need for production-ready AI image generation</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🔌</div>
+                        <h3>OpenAI Compatible</h3>
+                        <p>Drop-in replacement for OpenAI's image API. Use your existing code with zero changes.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🏠</div>
+                        <h3>Self-Hosted</h3>
+                        <p>Run on your own infrastructure. Full control over your data and privacy.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Lazy Loading</h3>
+                        <p>Models load on first request. Idle unloading frees VRAM automatically.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎨</div>
+                        <h3>Multiple Sizes</h3>
+                        <p>Support for OpenAI sizes (1024x1024, 1024x1536, 1536x1024) and native Qwen sizes.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3>API Key Auth</h3>
+                        <p>Secure your endpoint with Bearer token authentication.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h3>Queue Management</h3>
+                        <p>Configurable concurrency limits prevent GPU overload.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🖼️</div>
+                        <h3>Multiple Formats</h3>
+                        <p>Output as base64 JSON or URL. Supports PNG, WebP, and JPEG formats.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🚀</div>
+                        <h3>Production Ready</h3>
+                        <p>Includes systemd unit and nginx config for easy deployment.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🎯</div>
+                        <h3>Seed Control</h3>
+                        <p>Reproducible results with seed parameter for consistent outputs.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="playground">
+            <div class="container">
+                <div class="playground">
+                    <div class="playground-header">
+                        <h2>🎨 Image Playground</h2>
+                        <div class="status-indicator online" id="statusIndicator">
+                            Server Online
+                        </div>
+                    </div>
+                    <div class="playground-content">
+                        <div class="playground-form">
+                            <div class="form-group">
+                                <label for="serverUrl">Server URL</label>
+                                <input type="text" id="serverUrl" class="form-input" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000">
+                            </div>
+                            <div class="form-group">
+                                <label for="apiKey">API Key</label>
+                                <input type="text" id="apiKey" class="form-input" value="local-qwen" placeholder="your-api-key">
+                            </div>
+                            <div class="form-group">
+                                <label for="prompt">Prompt</label>
+                                <textarea id="prompt" class="form-input" placeholder="Describe the image you want to generate...">A cinematic cyberpunk street in Tokyo at night, neon lights reflecting on wet pavement, ultra detailed, 8k</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="negativePrompt">Negative Prompt (Optional)</label>
+                                <textarea id="negativePrompt" class="form-input" placeholder="What to avoid...">blurry, low quality, distorted, watermark</textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="size">Size</label>
+                                    <select id="size" class="form-select">
+                                        <option value="1024x1024">1024 x 1024 (Square)</option>
+                                        <option value="1024x1536">1024 x 1536 (Portrait)</option>
+                                        <option value="1536x1024" selected>1536 x 1024 (Landscape)</option>
+                                        <option value="1328x1328">1328 x 1328 (Native)</option>
+                                        <option value="1664x928">1664 x 928 (Wide)</option>
+                                        <option value="928x1664">928 x 1664 (Tall)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="format">Output Format</label>
+                                    <select id="format" class="form-select">
+                                        <option value="png">PNG</option>
+                                        <option value="webp">WebP</option>
+                                        <option value="jpeg">JPEG</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="steps">Inference Steps</label>
+                                    <input type="number" id="steps" class="form-input" value="20" min="1" max="50">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfgScale">CFG Scale</label>
+                                    <input type="number" id="cfgScale" class="form-input" value="4.0" min="1" max="20" step="0.5">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="seed">Seed (Optional)</label>
+                                    <input type="number" id="seed" class="form-input" placeholder="Random">
+                                </div>
+                                <div class="form-group">
+                                    <label for="count">Number of Images</label>
+                                    <input type="number" id="count" class="form-input" value="1" min="1" max="4">
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="generateImage()" id="generateBtn" style="width: 100%; justify-content: center;">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                Generate Image
+                            </button>
+                        </div>
+                        <div class="playground-result">
+                            <div class="result-header">
+                                <span>Generated Image</span>
+                                <button class="btn btn-ghost" onclick="downloadImage()" id="downloadBtn" style="display: none; padding: 0.5rem 1rem; font-size: 0.875rem;">
+                                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    Download
+                                </button>
+                            </div>
+                            <div class="result-image-container" id="resultContainer">
+                                <div class="result-placeholder" id="resultPlaceholder">
+                                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                    <p>Your generated image will appear here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="api">
+            <div class="container">
+                <div class="section-header">
+                    <h2>API <span class="gradient">Reference</span></h2>
+                    <p>Simple, RESTful endpoints compatible with OpenAI SDK</p>
+                </div>
+                <div class="api-section">
+                    <div class="api-tabs">
+                        <button class="api-tab active" onclick="showApiTab('endpoints')">Endpoints</button>
+                        <button class="api-tab" onclick="showApiTab('parameters')">Parameters</button>
+                        <button class="api-tab" onclick="showApiTab('examples')">Examples</button>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-panel active" id="endpoints">
+                            <div class="endpoint-card">
+                                <div class="endpoint-header">
+                                    <span class="method-badge method-get">GET</span>
+                                    <span class="endpoint-path">/health</span>
+                                </div>
+                                <p class="endpoint-description">Check server health and configuration status.</p>
+                                <div class="code-block">
+<span class="keyword">curl</span> http://localhost:8000/health</div>
+                            </div>
+                            <div class="endpoint-card">
+                                <div class="endpoint-header">
+                                    <span class="method-badge method-get">GET</span>
+                                    <span class="endpoint-path">/v1/models</span>
+                                </div>
+                                <p class="endpoint-description">List available models.</p>
+                                <div class="code-block">
+<span class="keyword">curl</span> http://localhost:8000/v1/models \
+  -H <span class="string">"Authorization: Bearer local-qwen"</span></div>
+                            </div>
+                            <div class="endpoint-card">
+                                <div class="endpoint-header">
+                                    <span class="method-badge method-post">POST</span>
+                                    <span class="endpoint-path">/v1/images/generations</span>
+                                </div>
+                                <p class="endpoint-description">Generate images from text prompts.</p>
+                                <div class="code-block">
+<span class="keyword">curl</span> http://localhost:8000/v1/images/generations \
+  -H <span class="string">"Content-Type: application/json"</span> \
+  -H <span class="string">"Authorization: Bearer local-qwen"</span> \
+  -d <span class="string">'{
+    "prompt": "A beautiful sunset over mountains",
+    "size": "1024x1024",
+    "n": 1
+  }'</span></div>
+                            </div>
+                        </div>
+                        <div class="api-panel" id="parameters">
+                            <div class="endpoint-card">
+                                <h3 style="margin-bottom: 1rem;">Request Parameters</h3>
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="text-align: left; border-bottom: 1px solid var(--glass-border);">
+                                            <th style="padding: 0.75rem; color: var(--gray-light);">Parameter</th>
+                                            <th style="padding: 0.75rem; color: var(--gray-light);">Type</th>
+                                            <th style="padding: 0.75rem; color: var(--gray-light);">Default</th>
+                                            <th style="padding: 0.75rem; color: var(--gray-light);">Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody style="font-size: 0.9rem;">
+                                        <tr style="border-bottom: 1px solid var(--glass-border);">
+                                            <td style="padding: 0.75rem;"><code>prompt</code></td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">string</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">required</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">Text description of desired image</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid var(--glass-border);">
+                                            <td style="padding: 0.75rem;"><code>size</code></td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">string</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">1024x1024</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">Image dimensions</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid var(--glass-border);">
+                                            <td style="padding: 0.75rem;"><code>n</code></td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">integer</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">1</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">Number of images (1-4)</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid var(--glass-border);">
+                                            <td style="padding: 0.75rem;"><code>response_format</code></td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">string</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">b64_json</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">b64_json or url</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid var(--glass-border);">
+                                            <td style="padding: 0.75rem;"><code>output_format</code></td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">string</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">png</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">png, webp, or jpeg</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid var(--glass-border);">
+                                            <td style="padding: 0.75rem;"><code>seed</code></td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">integer</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">random</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">Seed for reproducibility</td>
+                                        </tr>
+                                        <tr style="border-bottom: 1px solid var(--glass-border);">
+                                            <td style="padding: 0.75rem;"><code>negative_prompt</code></td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">string</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">""</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">What to avoid in generation</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 0.75rem;"><code>num_inference_steps</code></td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">integer</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">20</td>
+                                            <td style="padding: 0.75rem; color: var(--gray-light);">Number of diffusion steps</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="api-panel" id="examples">
+                            <div class="endpoint-card">
+                                <h3 style="margin-bottom: 1rem;">Python (OpenAI SDK)</h3>
+                                <div class="code-block">
+<span class="keyword">from</span> openai <span class="keyword">import</span> OpenAI
+<span class="keyword">import</span> base64
+<span class="keyword">from</span> pathlib <span class="keyword">import</span> Path
+
+client = <span class="function">OpenAI</span>(
+    <span class="property">base_url</span>=<span class="string">"http://localhost:8000/v1"</span>,
+    <span class="property">api_key</span>=<span class="string">"local-qwen"</span>
+)
+
+resp = client.<span class="function">images.generate</span>(
+    <span class="property">model</span>=<span class="string">"qwen-image"</span>,
+    <span class="property">prompt</span>=<span class="string">"A fantasy castle in the clouds"</span>,
+    <span class="property">size</span>=<span class="string">"1024x1024"</span>,
+    <span class="property">extra_body</span>={
+        <span class="property">"response_format"</span>: <span class="string">"b64_json"</span>,
+        <span class="property">"seed"</span>: 42,
+        <span class="property">"num_inference_steps"</span>: 20
+    }
+)
+
+Path(<span class="string">"output.png"</span>).<span class="function">write_bytes</span>(
+    base64.<span class="function">b64decode</span>(resp.data[0].b64_json)
+)</div>
+                            </div>
+                            <div class="endpoint-card">
+                                <h3 style="margin-bottom: 1rem;">JavaScript (fetch)</h3>
+                                <div class="code-block">
+<span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'http://localhost:8000/v1/images/generations'</span>, {
+    <span class="property">method</span>: <span class="string">'POST'</span>,
+    <span class="property">headers</span>: {
+        <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
+        <span class="string">'Authorization'</span>: <span class="string">'Bearer local-qwen'</span>
+    },
+    <span class="property">body</span>: JSON.<span class="function">stringify</span>({
+        <span class="property">prompt</span>: <span class="string">'A serene lake at sunset'</span>,
+        <span class="property">size</span>: <span class="string">'1024x1024'</span>,
+        <span class="property">n</span>: 1,
+        <span class="property">response_format</span>: <span class="string">'b64_json'</span>
+    })
+});
+
+<span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+<span class="keyword">const</span> img = <span class="keyword">new</span> <span class="function">Image</span>();
+img.<span class="property">src</span> = <span class="string">`data:image/png;base64,</span>${data.data[0].b64_json}<span class="string">`</span>;</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="container">
+                <div class="credits-section">
+                    <h2>Built with ❤️</h2>
+                    <p>This project is made possible by these amazing open-source technologies and communities.</p>
+                    <div class="credits-logos">
+                        <div class="credit-logo">
+                            <div class="credit-logo-icon">🤗</div>
+                            <span>Hugging Face</span>
+                        </div>
+                        <div class="credit-logo">
+                            <div class="credit-logo-icon">Q</div>
+                            <span>Qwen Team</span>
+                        </div>
+                        <div class="credit-logo">
+                            <div class="credit-logo-icon">🔥</div>
+                            <span>PyTorch</span>
+                        </div>
+                        <div class="credit-logo">
+                            <div class="credit-logo-icon">⚡</div>
+                            <span>FastAPI</span>
+                        </div>
+                        <div class="credit-logo">
+                            <div class="credit-logo-icon">🧨</div>
+                            <span>Diffusers</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="https://github.com/groxaxo/qwen-image-openai-server" target="_blank">GitHub</a>
+                <a href="https://huggingface.co/ovedrive/Qwen-Image-2512-4bit" target="_blank">Model</a>
+                <a href="https://github.com/huggingface/diffusers" target="_blank">Diffusers</a>
+                <a href="https://fastapi.tiangolo.com/" target="_blank">FastAPI</a>
+            </div>
+            <div class="footer-copy">
+                Made with ❤️ by the open-source community
+            </div>
+        </div>
+    </footer>
+
+    <div class="toast" id="toast">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        let currentImageData = null;
+
+        function scrollToPlayground() {
+            document.getElementById('playground').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showApiTab(tabId) {
+            document.querySelectorAll('.api-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.api-panel').forEach(panel => panel.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toast.className = `toast ${type}`;
+            toastMessage.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        async function checkServerHealth() {
+            const url = document.getElementById('serverUrl').value;
+            const indicator = document.getElementById('statusIndicator');
+            try {
+                const response = await fetch(`${url}/health`);
+                if (response.ok) {
+                    indicator.className = 'status-indicator online';
+                    indicator.textContent = 'Server Online';
+                    return true;
+                }
+            } catch (e) {}
+            indicator.className = 'status-indicator';
+            indicator.style.color = 'var(--error)';
+            indicator.textContent = 'Server Offline';
+            return false;
+        }
+
+        async function generateImage() {
+            const url = document.getElementById('serverUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const prompt = document.getElementById('prompt').value;
+            const negativePrompt = document.getElementById('negativePrompt').value;
+            const size = document.getElementById('size').value;
+            const format = document.getElementById('format').value;
+            const steps = parseInt(document.getElementById('steps').value);
+            const cfgScale = parseFloat(document.getElementById('cfgScale').value);
+            const seed = document.getElementById('seed').value;
+            const count = parseInt(document.getElementById('count').value);
+
+            if (!prompt.trim()) {
+                showToast('Please enter a prompt', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('generateBtn');
+            const container = document.getElementById('resultContainer');
+            const placeholder = document.getElementById('resultPlaceholder');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div> Generating...';
+            placeholder.innerHTML = '<div class="loading-spinner"></div>';
+            placeholder.style.display = 'flex';
+            placeholder.style.justifyContent = 'center';
+            placeholder.style.alignItems = 'center';
+
+            const body = {
+                prompt: prompt,
+                size: size,
+                n: count,
+                response_format: 'b64_json',
+                output_format: format,
+                num_inference_steps: steps,
+                true_cfg_scale: cfgScale
+            };
+
+            if (negativePrompt.trim()) {
+                body.negative_prompt = negativePrompt;
+            }
+
+            if (seed) {
+                body.seed = parseInt(seed);
+            }
+
+            try {
+                const response = await fetch(`${url}/v1/images/generations`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Generation failed');
+                }
+
+                const data = await response.json();
+                const imageData = data.data[0].b64_json;
+                currentImageData = imageData;
+
+                container.innerHTML = `<img src="data:image/${format === 'jpeg' ? 'jpeg' : format};base64,${imageData}" class="result-image" alt="Generated image">`;
+                downloadBtn.style.display = 'flex';
+                showToast('Image generated successfully!', 'success');
+            } catch (error) {
+                placeholder.innerHTML = `
+                    <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    <p>${error.message}</p>
+                `;
+                placeholder.style.display = 'block';
+                showToast(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Generate Image
+                `;
+            }
+        }
+
+        function downloadImage() {
+            if (!currentImageData) return;
+            const format = document.getElementById('format').value;
+            const link = document.createElement('a');
+            link.href = `data:image/${format === 'jpeg' ? 'jpeg' : format};base64,${currentImageData}`;
+            link.download = `qwen-image-${Date.now()}.${format === 'jpeg' ? 'jpg' : format}`;
+            link.click();
+            showToast('Image downloaded!', 'success');
+        }
+
+        checkServerHealth();
+        setInterval(checkServerHealth, 30000);
+    </script>
+</body>
+</html>
