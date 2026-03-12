@@ -1,0 +1,23 @@
+[Unit]
+Description=Qwen Image OpenAI-Compatible FastAPI Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/opt/qwen-image-openai-server
+EnvironmentFile=/opt/qwen-image-openai-server/.env
+ExecStart=/bin/bash -lc '/opt/qwen-image-openai-server/scripts/start_server.sh'
+Restart=always
+RestartSec=5
+TimeoutStartSec=120
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+transformers>=4.51.3
+accelerate
+bitsandbytes
+safetensors
+pillow
+fastapi
+uvicorn[standard]
+python-multipart
+openai
+git+https://github.com/huggingface/diffusers

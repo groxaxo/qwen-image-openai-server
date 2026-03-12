@@ -1,0 +1,23 @@
+name: qwenimg
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pytorch=2.3.0
+  - torchvision=0.18.0
+  - torchaudio=2.3.0
+  - pytorch-cuda=12.1
+  - pip
+  - pip:
+      - transformers>=4.51.3
+      - accelerate
+      - bitsandbytes
+      - safetensors
+      - pillow
+      - fastapi
+      - uvicorn[standard]
+      - python-multipart
+      - openai
+      - git+https://github.com/huggingface/diffusers
